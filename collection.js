@@ -37,7 +37,7 @@ StatsCollector.prototype._collect = function(server) {
           while (null !== (chunk = stream.read())) {
 
             var data = {
-              name: 'devicedata.' + device.id + '.' + name,
+              name: 'devicedata.' + device.type + '.' + name,
               timestamp: chunk.timestamp,
               value: chunk.data,
               tags: {
