@@ -31,7 +31,8 @@ StatsCollector.prototype._collect = function(server) {
           return;
         }
         
-        device.createReadStream(name).on('readable', function() {
+        var stream = device.createReadStream(name);
+        stream.on('readable', function() {
           var chunk;
           while (null !== (chunk = stream.read())) {
 
