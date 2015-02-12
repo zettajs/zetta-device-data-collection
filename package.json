@@ -1,0 +1,14 @@
+{
+  "name": "zetta-device-data-collection",
+  "version": "0.1.0",
+  "description": "Subscribe to all devices streams and pipe to event emitter",
+  "main": "collection.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "zetta"
+  ],
+  "author": "Adam Magaluk <AdamMagaluk@gmail.com>",
+  "license": "MIT"
+}
