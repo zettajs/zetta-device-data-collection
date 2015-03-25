@@ -47,6 +47,13 @@ StatsCollector.prototype._collect = function(server) {
               }
             };
 
+            var filteredHeaders = ['connection', 'upgrade', 'sec-websocket-key', 'authorization'];
+            Object.keys(msg.peer.ws.upgradeReq.headers).forEach(function(header) {
+              if (filteredHeaders.indexOf(header) === -1) {
+                data.tags['req-header-' + header] = msg.peer.ws.upgradeReq.headers[header];
+              }
+            });
+
             self.emitter.emit('event', data);
           }
         });
