@@ -1,63 +1,60 @@
 var EventEmitter = require('events').EventEmitter;
+var url = require('url');
+var util = require('util');
+var rels = require('zetta-rels');
+var uuid = require('node-uuid');
 
 var StatsCollector = module.exports = function() {
-  this.emitter = new EventEmitter();
-  this.server = null;
+  EventEmitter.call(this);
 };
-
-StatsCollector.prototype.on = function() {
-  this.emitter.on.apply(this.emitter, arguments);
-};
+util.inherits(StatsCollector, EventEmitter);
 
 StatsCollector.prototype.collect = function() {
   return this._collect.bind(this);
 };
-StatsCollector.prototype._collect = function(server) {
-  var self = this;
-  this.server = server;
 
-  var servers = []; // keep a list of peers subscribed to, to filter duplicates
-  server.pubsub.subscribe('_peer/connect', function(e, msg) {
-    if (servers.indexOf(msg.peer.name) > -1) {
+StatsCollector.prototype._collect = function(runtime) {
+  var self = this;
+
+  runtime.pubsub.subscribe('_peer/connect', function(ev, msg) {
+    var topic = 'query:' + uuid.v4() + '/where type is not missing';
+
+    if (Object.keys(msg.peer.subscriptions).indexOf(topic) !== -1) {
       return;
     }
-    servers.push(msg.peer.name); // _peer/connect is called on reconnect, must filter
 
-    var query = server.from(msg.peer.name).ql('where type is not missing');
-    server.observe(query, function(device) {
-      Object.keys(device.streams).forEach(function(name) {
+    msg.peer.on(topic, function(device) {
+      var links = device.links.filter(function(link) {
+        if (link.rel.indexOf(rels.objectStream) !== -1
+          || link.rel.indexOf(rels.binaryStream) !== -1) {
+          return link;
+        }
+      });
 
-        if (name === 'logs') {
+      if (links.length === 0) {
+        return;
+      }
+
+      var topics = links.map(function(link) {
+        var querystring = url.parse(link.href, true);
+        return querystring.query.topic;
+      });
+
+      if (topics.length === 0) {
+        return;
+      }
+
+      topics.forEach(function(topic) {
+        if (Object.keys(msg.peer.subscriptions).indexOf(topic) !== -1) {
           return;
         }
-        
-        var stream = device.createReadStream(name);
-        stream.on('readable', function() {
-          var chunk;
-          while (null !== (chunk = stream.read())) {
 
-            var data = {
-              name: 'devicedata.' + device.type + '.' + name,
-              timestamp: chunk.timestamp,
-              value: chunk.data,
-              tags: {
-                hub: msg.peer.name,
-                device: device.id,
-                deviceType: device.type
-              }
-            };
-
-            var filteredHeaders = ['connection', 'upgrade', 'sec-websocket-key', 'authorization'];
-            Object.keys(msg.peer.ws.upgradeReq.headers).forEach(function(header) {
-              if (filteredHeaders.indexOf(header) === -1) {
-                data.tags['req-header-' + header] = msg.peer.ws.upgradeReq.headers[header];
-              }
-            });
-
-            self.emitter.emit('event', data);
-          }
+        msg.peer.on(topic, function(deviceMessage) {
+          self.emit('event', deviceMessage);
         });
+        msg.peer.subscribe(topic);
       });
     });
+    msg.peer.subscribe(encodeURIComponent(topic));
   });
 };

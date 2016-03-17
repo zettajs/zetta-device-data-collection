@@ -10,5 +10,9 @@
     "zetta"
   ],
   "author": "Adam Magaluk <AdamMagaluk@gmail.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "node-uuid": "^1.4.7",
+    "zetta-rels": "^0.5.0"
+  }
 }
