@@ -43,7 +43,8 @@ StatsCollector.prototype._collect = function(server) {
               tags: {
                 hub: msg.peer.name,
                 device: device.id,
-                deviceType: device.type
+                deviceType: device.type,
+                stream: name
               }
             };
 
