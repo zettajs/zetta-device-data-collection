@@ -2,7 +2,6 @@ var EventEmitter = require('events').EventEmitter;
 var url = require('url');
 var util = require('util');
 var rels = require('zetta-rels');
-var uuid = require('node-uuid');
 
 var StatsCollector = module.exports = function() {
   EventEmitter.call(this);
@@ -17,9 +16,9 @@ StatsCollector.prototype._collect = function(runtime) {
   var self = this;
 
   runtime.pubsub.subscribe('_peer/connect', function(ev, msg) {
-    var topic = 'query:' + uuid.v4() + '/where type is not missing';
+    var topic = 'query:collector+' + msg.peer.name + '/where type is not missing';
 
-    if (Object.keys(msg.peer.subscriptions).indexOf(topic) !== -1) {
+    if (Object.keys(msg.peer.subscriptions).indexOf(encodeURIComponent(topic)) !== -1) {
       return;
     }
 
