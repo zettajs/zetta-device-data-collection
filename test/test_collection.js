@@ -16,7 +16,14 @@ describe('StatsCollector', function() {
 
     cluster.on('ready', function() {
       collector.once('event', function(msg) {
-        assert(!!msg.data);
+        assert.equal(msg.name.indexOf('devicedata.'), 0);
+        assert(msg.timestamp);
+        assert(msg.value);
+        assert(msg.tags.hub);
+        assert(msg.tags.device);
+        assert(msg.tags.deviceType);
+        assert(msg.tags.stream);
+        
         cluster.stop();
         setTimeout(done, 10);
       });
