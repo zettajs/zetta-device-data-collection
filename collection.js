@@ -1,64 +1,81 @@
 var EventEmitter = require('events').EventEmitter;
+var url = require('url');
+var util = require('util');
+var rels = require('zetta-rels');
 
-var StatsCollector = module.exports = function() {
-  this.emitter = new EventEmitter();
-  this.server = null;
-};
+var EXCLUDED_EVENTS = [
+    /^_peer\/.+/, // peer events
+    /^logs$/ // logs topic is emitted for stdout on device transitions
+];
 
-StatsCollector.prototype.on = function() {
-  this.emitter.on.apply(this.emitter, arguments);
+var FILTERED_HEADERS = [
+  'connection',
+  'upgrade',
+  'sec-websocket-key',
+  'authorization',
+  'sec-websocket-version'
+];
+
+var StatsCollector = module.exports = function(options) {
+  options = options || {};
+  this.includeServerEvents = !!(options.includeServerEvents);
+
+  EventEmitter.call(this);
 };
+util.inherits(StatsCollector, EventEmitter);
 
 StatsCollector.prototype.collect = function() {
   return this._collect.bind(this);
 };
-StatsCollector.prototype._collect = function(server) {
+
+StatsCollector.prototype._collect = function(runtime) {
   var self = this;
-  this.server = server;
 
-  var servers = []; // keep a list of peers subscribed to, to filter duplicates
-  server.pubsub.subscribe('_peer/connect', function(e, msg) {
-    if (servers.indexOf(msg.peer.name) > -1) {
-      return;
-    }
-    servers.push(msg.peer.name); // _peer/connect is called on reconnect, must filter
+  var peers = [];
+  runtime.pubsub.subscribe('_peer/connect', function(ev, msg) {
+    if (peers.indexOf(msg.peer.name) < 0) {
+      msg.peer.subscribe('**');
+      msg.peer.on('zetta-events', function(topic, data) {
+        if (!self.includeServerEvents) {
+          var found = EXCLUDED_EVENTS.some(function(regex) {
+            return regex.test(topic);
+          });
 
-    var query = server.from(msg.peer.name).ql('where type is not missing');
-    server.observe(query, function(device) {
-      Object.keys(device.streams).forEach(function(name) {
+          if (found) {
+            return;
+          }
+        }
 
-        if (name === 'logs') {
+
+        var split = data.topic.split('/');
+
+        // Only publish device data events that conform to {type}/{id}/{stream}
+        if (split.length === 3) {
+          var formatedData = {
+            name: 'devicedata.' + split[0] + '.' + split[2],
+            timestamp: data.timestamp,
+            value: data.data,
+            tags: {
+              hub: msg.peer.name,
+              device: split[1],
+              deviceType: split[1],
+              stream: split[2]
+            }
+          };
+
+          Object.keys(msg.peer.ws.upgradeReq.headers).forEach(function(header) {
+            if (FILTERED_HEADERS.indexOf(header) === -1) {
+              formatedData.tags['req-header-' + header] = msg.peer.ws.upgradeReq.headers[header];
+            }
+          });
+
+          self.emit('event', formatedData);
+        } else {
           return;
         }
-        
-        var stream = device.createReadStream(name);
-        stream.on('readable', function() {
-          var chunk;
-          while (null !== (chunk = stream.read())) {
-
-            var data = {
-              name: 'devicedata.' + device.type + '.' + name,
-              timestamp: chunk.timestamp,
-              value: chunk.data,
-              tags: {
-                hub: msg.peer.name,
-                device: device.id,
-                deviceType: device.type,
-                stream: name
-              }
-            };
-
-            var filteredHeaders = ['connection', 'upgrade', 'sec-websocket-key', 'authorization', 'sec-websocket-version'];
-            Object.keys(msg.peer.ws.upgradeReq.headers).forEach(function(header) {
-              if (filteredHeaders.indexOf(header) === -1) {
-                data.tags['req-header-' + header] = msg.peer.ws.upgradeReq.headers[header];
-              }
-            });
-
-            self.emitter.emit('event', data);
-          }
-        });
       });
-    });
+
+      peers.push(msg.peer.name);
+    }
   });
 };
