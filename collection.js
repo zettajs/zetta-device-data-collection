@@ -19,7 +19,7 @@ var FILTERED_HEADERS = [
 var StatsCollector = module.exports = function(options) {
   options = options || {};
   this.includeServerEvents = !!(options.includeServerEvents);
-  
+
   EventEmitter.call(this);
 };
 util.inherits(StatsCollector, EventEmitter);
@@ -40,7 +40,7 @@ StatsCollector.prototype._collect = function(runtime) {
           var found = EXCLUDED_EVENTS.some(function(regex) {
             return regex.test(topic);
           });
-          
+
           if (found) {
             return;
           }
@@ -68,13 +68,13 @@ StatsCollector.prototype._collect = function(runtime) {
               formatedData.tags['req-header-' + header] = msg.peer.ws.upgradeReq.headers[header];
             }
           });
-          
+
           self.emit('event', formatedData);
         } else {
           return;
         }
       });
-      
+
       peers.push(msg.peer.name);
     }
   });
