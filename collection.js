@@ -30,6 +30,7 @@ StatsCollector.prototype.collect = function() {
 
 StatsCollector.prototype._collect = function(runtime) {
   var self = this;
+  self.server = runtime;
 
   var peers = [];
   runtime.pubsub.subscribe('_peer/connect', function(ev, msg) {
