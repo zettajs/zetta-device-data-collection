@@ -30,6 +30,7 @@ StatsCollector.prototype.collect = function() {
 
 StatsCollector.prototype._collect = function(runtime) {
   var self = this;
+  self.server = runtime;
 
   var peers = [];
   runtime.pubsub.subscribe('_peer/connect', function(ev, msg) {
@@ -47,6 +48,9 @@ StatsCollector.prototype._collect = function(runtime) {
         }
 
 
+        if(!data.topic) {
+          return;
+        }
         var split = data.topic.split('/');
 
         // Only publish device data events that conform to {type}/{id}/{stream}

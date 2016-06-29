@@ -1,6 +1,6 @@
 {
   "name": "zetta-device-data-collection",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Subscribe to all devices streams and pipe to event emitter",
   "main": "collection.js",
   "scripts": {
