@@ -62,7 +62,7 @@ StatsCollector.prototype._collect = function(runtime) {
             tags: {
               hub: msg.peer.name,
               device: split[1],
-              deviceType: split[1],
+              deviceType: split[0],
               stream: split[2]
             }
           };
